@@ -1,0 +1,35 @@
+---
+- name: Configure VSFTPD on target machine
+  hosts: all
+  become: yes
+
+  vars:
+    anonymous_enable: NO
+    write_enable: YES
+
+  tasks:
+    - name: Install vsftpd
+      apt:
+        name: vsftpd
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install vsftpd (for RedHat-based systems)
+      yum:
+        name: vsftpd
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Deploy vsftpd config using template
+      template:
+        src: templates/vsftpd.conf.j2
+        dest: /etc/vsftpd.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Restart vsftpd service
+      service:
+        name: vsftpd
+        state: restarted
+

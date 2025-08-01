@@ -1,0 +1,72 @@
+---
+- name: Launch EC2 instance and attach EBS volume
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: Set AWS configuration variables
+      set_fact:
+        aws_region: ap-south-1
+        instance_name: Ansible-Instance
+        volume_name: Ansible-EBS
+        key_name: tasks
+        instance_type: t2.micro
+        image_id: ami-0f918f7e67a3323f0
+        subnet_id: subnet-0219bbf7599e4e533
+        security_group_id: sg-06cb9a0fe6c1c2d65
+
+    - name: Launch EC2 instance
+      amazon.aws.ec2_instance:
+        aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+        region: "{{ aws_region }}"
+
+        name: "{{ instance_name }}"
+        key_name: "{{ key_name }}"
+        instance_type: "{{ instance_type }}"
+        image_id: "{{ image_id }}"
+        wait: true
+        count: 1
+        network_interfaces:
+          - subnet_id: "{{ subnet_id }}"
+            assign_public_ip: true
+            security_group_id: "{{ security_group_id }}"
+        tags:
+          Name: "{{ instance_name }}"
+      register: ec2_result
+
+    - name: Create EBS volume
+      amazon.aws.ec2_vol:
+        aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+        region: "{{ aws_region }}"
+        zone: "{{ ec2_result.instances[0].placement.availability_zone }}"
+        volume_size: 8
+        volume_type: gp2
+        state: present
+        tags:
+          Name: "{{ volume_name }}"
+      register: ebs_volume
+
+    - name: Set instance_id and volume_id
+      set_fact:
+        instance_id: "{{ ec2_result.instances[0].instance_id | default('') }}"
+        volume_id: "{{ ebs_volume.volume_id | default('') }}"
+
+    - name: Fail if instance_id or volume_id is missing
+      fail:
+        msg: "Instance ID or Volume ID is not available — aborting attach step."
+      when: instance_id == '' or volume_id == ''
+
+    - name: Attach EBS volume to instance
+      amazon.aws.ec2_vol:
+        aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+        region: "{{ aws_region }}"
+        instance: "{{ instance_id }}"
+        id: "{{ volume_id }}"
+        device_name: /dev/xvdf
+        state: present
+

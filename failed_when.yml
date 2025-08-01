@@ -1,0 +1,16 @@
+---
+- name: Run script with failed_when condition
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Run the script
+      shell: ./your_script.sh
+      register: script_output
+      failed_when: 
+        - script_output.rc != 0
+        - "'ERROR' in script_output.stdout"
+
+    - name: Show script output
+      debug:
+        var: script_output.stdout
+

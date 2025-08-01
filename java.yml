@@ -1,0 +1,40 @@
+---
+- name: Setup Java and Users
+  hosts: all
+  become: true
+  vars:
+    java_package: openjdk-17-jdk
+    users:
+      - name: alice
+        password: "password123"
+      - name: bob
+        password: "password123"
+  tasks:
+
+    - name: Install Java JDK
+      apt:
+        name: "{{ java_package }}"
+        state: present
+        update_cache: yes
+
+    - name: Create users with default passwords
+      user:
+        name: "{{ item.name }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: yes
+      loop: "{{ users }}"
+
+    - name: Set JAVA_HOME in /etc/environment
+      lineinfile:
+        path: /etc/environment
+        line: 'JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64'
+        create: yes
+
+    - name: Export JAVA_HOME to all users
+      lineinfile:
+        path: /etc/profile.d/java.sh
+        line: 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64'
+        create: yes
+        mode: '0755'
+

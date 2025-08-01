@@ -1,0 +1,44 @@
+---
+- name: Backup configuration to AWS S3
+  hosts: all
+  become: yes
+  vars:
+    config_directory: "/etc/myapp/config"
+    backup_temp_dir: "/tmp"
+    timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+    backup_filename: "config_backup_{{ timestamp }}.tar.gz"
+    backup_file_path: "{{ backup_temp_dir }}/{{ backup_filename }}"
+    s3_bucket: "s3://my-config-backups"
+    aws_cli_profile: "default"
+    retention_days: 30
+
+  tasks:
+    - name: Create tar.gz archive of config files
+      archive:
+        path: "{{ config_directory }}"
+        dest: "{{ backup_file_path }}"
+        format: gz
+
+    - name: Upload archive to AWS S3
+      shell: |
+        aws s3 cp "{{ backup_file_path }}" "{{ s3_bucket }}/{{ backup_filename }}" --profile "{{ aws_cli_profile }}"
+      environment:
+        AWS_PROFILE: "{{ aws_cli_profile }}"
+      register: s3_upload
+      changed_when: "'upload:' in s3_upload.stdout"
+
+    - name: Delete local backups older than {{ retention_days }} days
+      find:
+        paths: "{{ backup_temp_dir }}"
+        patterns: "config_backup_*.tar.gz"
+        age: "{{ retention_days }}d"
+        recurse: no
+      register: old_backups
+
+    - name: Remove old backup files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_backups.files }}"
+      when: old_backups.matched > 0
+

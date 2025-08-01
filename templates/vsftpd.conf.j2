@@ -1,0 +1,52 @@
+# Basic VSFTPD Configuration File
+
+# Allow anonymous FTP? (YES/NO)
+anonymous_enable={{ anonymous_enable }}
+
+# Allow local users to log in
+local_enable=YES
+
+# Enable file upload and other write commands
+write_enable={{ write_enable }}
+
+# Default umask for local users
+local_umask=022
+
+# Enable directory messages
+dirmessage_enable=YES
+
+# Enable logging
+xferlog_enable=YES
+xferlog_file=/var/log/vsftpd.log
+xferlog_std_format=YES
+
+# Use local time
+use_localtime=YES
+
+# Activate the server in standalone mode
+listen=YES
+listen_ipv6=NO
+
+# Allow passive mode (recommended for clients behind firewalls)
+pasv_enable=YES
+pasv_min_port=10000
+pasv_max_port=10100
+
+# Set the FTP root for users (change as needed)
+# secure_chroot_dir is required, already set by package
+chroot_local_user=YES
+
+# Hide dot files
+force_dot_files=YES
+
+# Allow only listed users to login (optional)
+userlist_enable=YES
+userlist_file=/etc/vsftpd.userlist
+userlist_deny=NO
+
+# Enable PAM
+pam_service_name=vsftpd
+
+# Use TCP Wrappers for access control
+tcp_wrappers=YES
+

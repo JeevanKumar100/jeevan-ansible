@@ -1,0 +1,47 @@
+---
+- name: Restart sshd if cron is running
+  hosts: all
+  become: yes
+  tasks:
+<<<<<<< HEAD
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Check if cron is active
+      ansible.builtin.shell: systemctl is-active cron
+      register: cron_status
+      ignore_errors: yes
+
+    - name: Set SSH service name based on what's available
+      set_fact:
+        ssh_service: "{{ item }}"
+      when: item in ansible_facts.services
+      with_items:
+        - sshd
+        - ssh
+
+    - name: Restart ssh service if cron is running
+      ansible.builtin.service:
+        name: "{{ ssh_service }}"
+        state: restarted
+      when:
+        - cron_status.stdout == "active"
+        - ssh_service is defined
+=======
+    - name: Check if cron is running
+      shell: pgrep cron
+      register: cron_status
+      ignore_errors: yes
+
+    - name: Set ssh service name based on OS family
+      set_fact:
+        ssh_service: "{{ 'ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd' }}"
+
+    - name: Restart SSH service if cron is running
+      service:
+        name: "{{ ssh_service }}"
+        state: restarted
+      when: cron_status.rc == 0
+>>>>>>> f8bee6b ( new ansible files)
+

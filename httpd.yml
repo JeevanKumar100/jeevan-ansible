@@ -1,0 +1,33 @@
+---
+- name: Install httpd on Linux hosts
+  hosts: all
+  become: yes  # Ensures the playbook runs with sudo privileges
+  tasks:
+
+    - name: Check if the system is Linux
+      ansible.builtin.stat:
+        path: /etc/os-release
+      register: os_check
+
+    - name: Gather OS family facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "os_family"
+
+    - name: Install httpd on RedHat-based systems
+      ansible.builtin.yum:
+        name: httpd
+        state: present
+      when:
+        - os_check.stat.exists
+        - ansible_facts['os_family'] == "RedHat"
+
+    - name: Install apache2 on Debian-based systems
+      ansible.builtin.apt:
+        name: apache2
+        state: present
+        update_cache: yes
+      when:
+        - os_check.stat.exists
+        - ansible_facts['os_family'] == "Debian"
+

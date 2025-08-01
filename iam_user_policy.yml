@@ -1,0 +1,43 @@
+---
+- name: Manage AWS IAM user and attach policy
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    iam_user_name: "demo-user"
+    policy_name: "demo-user-policy"
+    policy_document: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "s3:ListBucket",
+              "s3:GetObject"
+            ],
+            "Resource": "*"
+          }
+        ]
+      }
+
+  tasks:
+    - name: Create IAM user
+      community.aws.iam_user:
+        name: "{{ iam_user_name }}"
+        state: present
+
+    - name: Create IAM policy
+      community.aws.iam_policy:
+        name: "{{ policy_name }}"
+        policy_document: "{{ policy_document }}"
+        state: present
+      register: created_policy
+
+    - name: Attach policy to IAM user
+      community.aws.iam_user_policy_attachment:
+        user_name: "{{ iam_user_name }}"
+        policy_arn: "{{ created_policy.policy.arn }}"
+        state: present
+

@@ -1,0 +1,57 @@
+---
+- name: Manage AWS IAM users and policies (Amazon AWS Collection)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    aws_region: "ap-south-1"
+    iam_users:
+      - name: "test-user"
+        state: "present"
+        managed_policies:
+          - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+        inline_policies:
+          - name: "custom-inline-policy"
+            policy_document: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "ec2:Describe*"
+                    ],
+                    "Resource": "*"
+                  }
+                ]
+              }
+
+  tasks:
+
+    - name: Create IAM users
+      amazon.aws.iam_user:
+        name: "{{ item.name }}"
+        state: "{{ item.state }}"
+        region: "{{ aws_region }}"
+      loop: "{{ iam_users }}"
+
+    - name: Attach managed policies
+      amazon.aws.iam_managed_policy_attachment:
+        user_name: "{{ item.0.name }}"
+        policy_arn: "{{ item.1 }}"
+        state: present
+        region: "{{ aws_region }}"
+      loop: "{{ iam_users | subelements('managed_policies') }}"
+      when: item.0.managed_policies is defined
+
+    - name: Attach inline policies
+      amazon.aws.iam_user_policy:
+        user_name: "{{ item.0.name }}"
+        policy_name: "{{ item.1.name }}"
+        policy_document: "{{ item.1.policy_document }}"
+        state: present
+        region: "{{ aws_region }}"
+      loop: "{{ iam_users | subelements('inline_policies') }}"
+      when: item.0.inline_policies is defined
+
